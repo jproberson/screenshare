@@ -20,47 +20,30 @@ export function setupSocketListeners(stateHandler) {
     updatePeerConnections,
     getSharerId,
     getRemoteStream,
+    updateSharerId,
   } = stateHandler;
 
   getSocket().on("error", (error) => {
     console.error("Socket error", error);
-  })
+  });
 
   getSocket().on("connect", async () => {
     try {
       console.log("Connected to socket server");
-      getSocket().emit("join-room", getRoomId(), getSocket().id);
-
+      console.log("Clearing any leftover connections");
       Object.keys(getPeerConnections()).forEach((userId) => {
         getPeerConnections()[userId].close();
+        console.log("updatePeerConnection to be null", userId, null);
         updatePeerConnections(userId, null);
       });
+
+      getSocket().emit("join-room", getRoomId(), getSocket().id);
 
       await loadRooms();
     } catch (error) {
       console.error("Error during socket connect event", error);
     }
-  });
-
-  getSocket().on("new-user-joined", async (newUserId) => {
-    console.log("new-user-joined", newUserId);
-    if (getIsSharing()) {
-      try {
-        const peerConnection = await createPeerConnection(
-          newUserId,
-          getSocket(),
-          getRoomId()
-        );
-
-        const offer = await peerConnection.createOffer();
-        await peerConnection.setLocalDescription(offer);
-        updatePeerConnections(newUserId, peerConnection);
-        getSocket().emit("offer", getRoomId(), newUserId, offer);
-      } catch (error) {
-        console.error("Error during new-user-joined event", error);
-      }
-    }
-  });
+  })
 
   getSocket().on("new-room-created", async () => {
     console.log("New room created");
@@ -72,9 +55,9 @@ export function setupSocketListeners(stateHandler) {
     if (!getOtherUsers().includes(newUserId)) {
       updateOtherUsers([...getOtherUsers(), newUserId]);
     }
-
-    // If the local user is sharing the screen, immediately start sharing with the new user
     const remoteStream = getRemoteStream();
+    if (remoteStream)
+      console.log("remote stream found for new user", newUserId);
     if (getIsSharing() && remoteStream) {
       console.log("Sharing screen with newly joined user", newUserId);
       try {
@@ -84,13 +67,12 @@ export function setupSocketListeners(stateHandler) {
           getRoomId()
         );
 
-        // Add tracks to the peer connection
         remoteStream.getTracks().forEach((track) => {
           peerConnection.addTrack(track, remoteStream);
         });
 
+        console.log("updatePeerConnections", newUserId, connection);
         updatePeerConnections(newUserId, peerConnection);
-        // Create an offer for the new user
         console.log("Creating an offer for the new user", newUserId);
         const offer = await peerConnection.createOffer();
         await peerConnection.setLocalDescription(offer);
@@ -106,9 +88,12 @@ export function setupSocketListeners(stateHandler) {
     }
   });
 
-  getSocket().on("start-sharing", () => {
-    console.log("start-sharing");
+  getSocket().on("start-sharing", (sharerId) => {
+    console.log("start-sharing recieved");
     updateIsSharing(true);
+    updateSharerId(sharerId);
+
+    console.log("adjustUIForStreaming", "\nisSharing", getIsSharing(), "\nsocketId", getSocket().id, "\nsharerId", getSharerId());
     adjustUIForStreaming(true, getSocket(), getSharerId());
   });
 
@@ -119,7 +104,7 @@ export function setupSocketListeners(stateHandler) {
   });
 
   getSocket().on("offer", async (userId, offer) => {
-    console.log("offer sent to", userId);
+    console.log("offer sent from", userId);
     await handleOffer(
       userId,
       offer,
@@ -130,13 +115,26 @@ export function setupSocketListeners(stateHandler) {
   });
 
   getSocket().on("answer", async (userId, answer) => {
-    console.log("answer sent to", userId);
-    await handleAnswer(userId, getPeerConnections(), answer);
+    console.log("answer sent from", userId);
+    const peerConnection = await handleAnswer(
+      userId,
+      getPeerConnections(),
+      answer
+    );
+    console.log("updatePeerConnections", userId, peerConnection);
+    updatePeerConnections(userId, peerConnection);
   });
 
   getSocket().on("ice-candidate", async (userId, candidate) => {
     console.log("ice-candidate sent to", userId);
-    await handleNewICECandidateMsg(userId, getPeerConnections(), candidate);
+    const peerConnection = await handleNewICECandidateMsg(
+      userId,
+      getPeerConnections(),
+      candidate
+    );
+    
+    console.log("updatePeerConnections", userId, peerConnection);
+    updatePeerConnections(userId, peerConnection);
   });
 
   getSocket().on("other-users", (otherUsers) => {
@@ -153,6 +151,8 @@ export function setupSocketListeners(stateHandler) {
       if (peerConnection) {
         peerConnection.close();
       }
+
+      console.log("updatePeerConnections", userId);
       updatePeerConnections(userId);
       console.log("peerConnections after user left", getPeerConnections());
       const updatedOtherUsers = getOtherUsers().filter((id) => id !== userId);

@@ -34,7 +34,6 @@ document.addEventListener("DOMContentLoaded", async (event) => {
     },
     getPeerConnections: () => peerConnections,
     updatePeerConnections: (userId, connection) => {
-      console.log("updatePeerConnections", userId, connection);
       if (connection) {
         peerConnections[userId] = connection;
       } else {

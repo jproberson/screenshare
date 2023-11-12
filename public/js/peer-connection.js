@@ -86,6 +86,8 @@ export async function handleOffer(
     const answer = await peerConnection.createAnswer();
     await peerConnection.setLocalDescription(answer);
     console.log("[PeerConnection] handleOffer", peerConnection);
+
+    console.log("Sending answer to server");
     socket.emit("answer", room_id, userId, peerConnection.localDescription);
   } catch (error) {
     console.error(`Error handling offer from userId: ${userId}`, error);
@@ -93,6 +95,7 @@ export async function handleOffer(
 }
 
 export async function handleAnswer(userId, peerConnections, answer) {
+  console.log("[PeerConnection] handleAnswer", peerConnections);
   try {
     const peerConnection = peerConnections[userId];
     console.log("[PeerConnection] handleAnswer", peerConnection);
@@ -111,6 +114,7 @@ export async function handleAnswer(userId, peerConnections, answer) {
     await peerConnection.setRemoteDescription(
       new RTCSessionDescription(answer)
     );
+    return peerConnection;
   } catch (error) {
     console.error(`Error handling answer from userId: ${userId}`, error);
   }
@@ -124,7 +128,7 @@ export async function handleNewICECandidateMsg(
   try {
     const peerConnection = peerConnections[userId];
     console.log("[PeerConnection] handleNewICECandidateMsg", peerConnection);
-    await peerConnection.addIceCandidate(new RTCIceCandidate(candidate));
+    return await peerConnection.addIceCandidate(new RTCIceCandidate(candidate));
   } catch (error) {
     console.error(`Error adding ICE candidate for userId: ${userId}`, error);
   }
