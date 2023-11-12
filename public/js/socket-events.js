@@ -22,6 +22,10 @@ export function setupSocketListeners(stateHandler) {
     getRemoteStream,
   } = stateHandler;
 
+  getSocket().on("error", (error) => {
+    console.error("Socket error", error);
+  })
+
   getSocket().on("connect", async () => {
     try {
       console.log("Connected to socket server");

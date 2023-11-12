@@ -6,6 +6,9 @@ import { setupSocketListeners } from "./socket-events.js";
 document.addEventListener("DOMContentLoaded", async (event) => {
   console.log("DOM fully loaded and parsed");
   const shareScreenButton = document.getElementById("share-screen-btn");
+  const toggleSidebarButton = document.getElementById("toggleSidebar");
+  const sidebar = document.getElementById("roomList");
+
   const socket = io("http://localhost:4000");
   let remoteStream = null;
   let otherUserIds = [];
@@ -57,6 +60,16 @@ document.addEventListener("DOMContentLoaded", async (event) => {
   });
 
   adjustUIForStreaming(isSharing, socket, sharerId);
+
+  toggleSidebarButton.addEventListener("click", function () {
+    if (sidebar.classList.contains("open")) {
+      sidebar.classList.remove("open");
+      toggleSidebarButton.textContent = '>'; // Right arrow when sidebar is closed
+    } else {
+      sidebar.classList.add("open");
+      toggleSidebarButton.textContent = '<'; // Left arrow when sidebar is open
+    }
+  });
 
   window.addEventListener("unhandledrejection", function (event) {
     console.error(
