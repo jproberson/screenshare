@@ -33,14 +33,18 @@ document.addEventListener("DOMContentLoaded", async (event) => {
       remoteStream = stream;
     },
     getPeerConnections: () => peerConnections,
-    updatePeerConnections: (userId, connection) => {
+    addPeerConnection: (userId, connection) => {
       if (connection) {
+        console.log("adding peer connection", userId, connection);
         peerConnections[userId] = connection;
-      } else {
+      }
+    },
+    removePeerConnection: (userId) => {
+      if (peerConnections[userId]) {
+        console.log("removing peer connection", userId);
+        peerConnections[userId].close();
         delete peerConnections[userId];
       }
-
-      console.log("peerConnections after updating", peerConnections);
     },
     getSharerId: () => sharerId,
     updateSharerId: (id) => {
@@ -63,10 +67,10 @@ document.addEventListener("DOMContentLoaded", async (event) => {
   toggleSidebarButton.addEventListener("click", function () {
     if (sidebar.classList.contains("open")) {
       sidebar.classList.remove("open");
-      toggleSidebarButton.textContent = '<';
+      toggleSidebarButton.textContent = "<";
     } else {
       sidebar.classList.add("open");
-      toggleSidebarButton.textContent = '>';
+      toggleSidebarButton.textContent = ">";
     }
   });
 

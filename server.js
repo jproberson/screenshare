@@ -14,18 +14,16 @@ const io = new Server(server, {
   },
 });
 
-const logDir = 'logs';
+const logDir = "logs";
 if (!fs.existsSync(logDir)) {
   fs.mkdirSync(logDir);
 }
 
 const logger = winston.createLogger({
-  level: 'info',
-  format: winston.format.combine(
-    winston.format.simple()
-  ),
+  level: "info",
+  format: winston.format.combine(winston.format.simple()),
   transports: [
-    new winston.transports.File({ filename: path.join(logDir, 'logs.log') })
+    new winston.transports.File({ filename: path.join(logDir, "logs.log") }),
   ],
 });
 
@@ -66,14 +64,17 @@ io.on("connection", (socket) => {
 
       const otherUsers = room.users.filter((id) => id !== userId);
       socket.emit("other-users", otherUsers);
-      logger.info(`Notified ${userId} of other users in room ${roomId}`);
-      logger.info(`Currently room being shared: ${room.isBeingShared}`);
-      if (room.isBeingShared) {
-        io.to(room.sharerId).emit("new-user", userId);
-        logger.info(`Notified sharer in room ${roomId} of new user ${userId}`);
-      }
+      logger.info(
+        `Notified ${userId} of other users: ${otherUsers} in room ${roomId}`
+      );
+      
+
+      socket.broadcast.to(roomId).emit("new-user", userId);
+      
     } catch (error) {
-      logger.error(`Error in join-room event for user ${userId} in room ${roomId}: ${error}`);
+      logger.error(
+        `Error in join-room event for user ${userId} in room ${roomId}: ${error}`
+      );
       socket.emit("error", "Failed to join room");
     }
   });
@@ -121,7 +122,9 @@ io.on("connection", (socket) => {
 
       socket.leave(roomId);
       socket.broadcast.to(roomId).emit("user-left", userId);
-      logger.info(`Broadcasting user-left event to ${roomId} because ${userId} left`);
+      logger.info(
+        `Broadcasting user-left event to ${roomId} because ${userId} left`
+      );
     } catch (error) {
       logger.error("Error in leave-room event:", error);
       socket.emit("error", "Failed to leave room");
@@ -141,7 +144,7 @@ io.on("connection", (socket) => {
   socket.on("answer", async (roomId, userId, answer) => {
     logger.info(`User ${userId} sent an answer in room ${roomId}`);
     try {
-      logger.info('sending answer to', userId)
+      logger.info("sending answer to", userId);
       io.to(userId).emit("answer", socket.id, answer);
       socket.emit("start-sharing");
     } catch (error) {

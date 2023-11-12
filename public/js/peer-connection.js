@@ -127,6 +127,10 @@ export async function handleNewICECandidateMsg(
 ) {
   try {
     const peerConnection = peerConnections[userId];
+    if (!peerConnection) {
+      console.error(`No peer connection found for user: ${userId}`);
+      return;
+    }
     console.log("[PeerConnection] handleNewICECandidateMsg", peerConnection);
     return await peerConnection.addIceCandidate(new RTCIceCandidate(candidate));
   } catch (error) {

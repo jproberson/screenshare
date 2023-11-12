@@ -5,7 +5,8 @@ export async function startSharing(stateHandler) {
   const {
     getSocket,
     updateRemoteStream,
-    updatePeerConnections,
+    addPeerConnection,
+    removePeerConnection,
     updateIsSharing,
     updateSharerId,
     getRoomId,
@@ -46,7 +47,7 @@ export async function startSharing(stateHandler) {
 
           const offer = await peerConnection.createOffer();
           await peerConnection.setLocalDescription(offer);
-          updatePeerConnections(otherUserId, peerConnection);
+          addPeerConnection(otherUserId, peerConnection);
           console.log("offer sent", getRoomId(), otherUserId, offer);
           socket.emit(
             "offer",
@@ -68,7 +69,7 @@ export async function startSharing(stateHandler) {
       adjustUIForStreaming(false, socket, null);
       updateRemoteStream(null);
       updateSharerId(null);
-      updatePeerConnections(null);
+      removePeerConnection(socket.id);
     }
 
     adjustUIForStreaming(true, socket, socket.id);
