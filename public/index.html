@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Screenshare</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <header id="banner">
+      <div class="banner-content">
+        Screenshare
+      </div>
+    </header>
+    <div class="main-content">
+      <aside class="sidebar" id="roomList"></aside>
+      <div class="content-area">
+        <div class="video-container">
+          <video autoplay controls muted playsinline id="remote-video"></video>
+        </div>
+        <button id="share-screen-btn">Share Screen</button>
+      </div>
+    </div>
+    <script src="/socket.io/socket.io.js"></script>
+    <script type="module" src="js/main.js"></script>
+  </body>
+</html>
