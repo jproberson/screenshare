@@ -34,17 +34,17 @@ header#banner {
 .toggle-sidebar {
   cursor: pointer;
   font-size: 24px;
-  background: #282828; /* Dark background for contrast */
+  background: #282828;
   color: white;
   border: none;
   padding: 10px 15px;
-  position: absolute; /* Position it at the top left */
+  position: absolute;
   top: 1rem;
   left: 0;
-  z-index: 10; /* Ensure it's above other elements */
-  border-top-right-radius: 10px; /* Rounded corners for better aesthetics */
+  z-index: 10;
+  border-top-right-radius: 10px;
   border-bottom-right-radius: 10px;
-  box-shadow: 2px 2px 10px rgba(0, 0, 0, 0.5); /* Subtle shadow for depth */
+  box-shadow: 2px 2px 10px rgba(0, 0, 0, 0.5);
 }
 
 .sidebar {
@@ -52,14 +52,14 @@ header#banner {
   overflow-y: auto;
   width: 200px;
   transition: transform 0.3s;
-  transform: translateX(-100%); /* Start off-screen */
+  transform: translateX(-100%);
   position: absolute;
   top: 4.5rem;
   bottom: 0;
 }
 
 .sidebar.open {
-  transform: translateX(0); /* Move into view when open */
+  transform: translateX(0);
 }
 
 img {
