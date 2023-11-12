@@ -64,10 +64,10 @@ document.addEventListener("DOMContentLoaded", async (event) => {
   toggleSidebarButton.addEventListener("click", function () {
     if (sidebar.classList.contains("open")) {
       sidebar.classList.remove("open");
-      toggleSidebarButton.textContent = '>';
+      toggleSidebarButton.textContent = '<';
     } else {
       sidebar.classList.add("open");
-      toggleSidebarButton.textContent = '<';
+      toggleSidebarButton.textContent = '>';
     }
   });
 
