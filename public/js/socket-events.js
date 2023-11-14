@@ -28,6 +28,73 @@ export function setupSocketListeners(stateHandler) {
     console.error("Socket error", error);
   });
 
+  getSocket().on("create-consumer-transport", async (callback) => {
+    try {
+      socket.emit(
+        "create-consumer-transport",
+        getRoomId(),
+        (err, transportParams) => {
+          if (err) {
+            console.error("Error creating consumer transport:", err);
+            callback(err);
+          } else {
+            callback(null, transportParams);
+          }
+        }
+      );
+    } catch (error) {
+      console.error("Error in create-consumer-transport:", error);
+      callback(error);
+    }
+  });
+
+  getSocket().on(
+    "connect-consumer-transport",
+    async (dtlsParameters, callback) => {
+      try {
+        socket.emit(
+          "connect-consumer-transport",
+          getRoomId(),
+          dtlsParameters,
+          (err) => {
+            if (err) {
+              console.error("Error connecting consumer transport:", err);
+              callback(err);
+            } else {
+              callback(null);
+            }
+          }
+        );
+      } catch (error) {
+        console.error("Error in connect-consumer-transport:", error);
+        callback(error);
+      }
+    }
+  );
+
+  getSocket().on("consume", async (producerId, rtpCapabilities, callback) => {
+    try {
+      socket.emit(
+        "consume",
+        getRoomId(),
+        getUserId(),
+        producerId,
+        rtpCapabilities,
+        (response) => {
+          if (response.error) {
+            console.error("Error consuming producer:", response.error);
+            callback(new Error(response.error));
+          } else {
+            callback(null, response);
+          }
+        }
+      );
+    } catch (error) {
+      console.error("Error in consume event:", error);
+      callback(error);
+    }
+  });
+
   getSocket().on("connect", async () => {
     try {
       console.log(`Socket connected to ${getSocket().id}`);

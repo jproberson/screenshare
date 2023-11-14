@@ -7,7 +7,6 @@ export function getRoomIdFromURL() {
 
 export function handleError(error, message = "An error occurred") {
     console.error(message, error);
-    // Update the UI to inform the user of the error.
-    // This could be a modal, toast, or an error message displayed on the page.
+    // TODO:Update the UI to inform the user of the error.
 }
 
