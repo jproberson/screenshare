@@ -12,7 +12,6 @@ document.addEventListener("DOMContentLoaded", async (event) => {
   const socket = io("http://localhost:4000");
   let remoteStream = null;
   let otherUserIds = [];
-  let peerConnections = {};
   let isSharing = false;
   let sharerId = null;
   const room_id = getRoomIdFromURL();
@@ -31,20 +30,6 @@ document.addEventListener("DOMContentLoaded", async (event) => {
     getRemoteStream: () => remoteStream,
     updateRemoteStream: (stream) => {
       remoteStream = stream;
-    },
-    getPeerConnections: () => peerConnections,
-    addPeerConnection: (userId, connection) => {
-      if (connection) {
-        console.log("adding peer connection", userId, connection);
-        peerConnections[userId] = connection;
-      }
-    },
-    removePeerConnection: (userId) => {
-      if (peerConnections[userId]) {
-        console.log("removing peer connection", userId);
-        peerConnections[userId].close();
-        delete peerConnections[userId];
-      }
     },
     getSharerId: () => sharerId,
     updateSharerId: (id) => {

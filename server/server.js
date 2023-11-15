@@ -58,15 +58,31 @@ app.get("/rooms", (req, res) => {
 io.on("connection", (socket) => {
   socket.on("create-producer-transport", async (roomId, userId, callback) => {
     try {
+      const room = getRoom(roomId);
+      if (!room) {
+        throw new Error(`Room with ID ${roomId} does not exist`);
+      }
+
+      const user = room.users.find((u) => u.userId === userId);
+      if (!user) {
+        throw new Error(
+          `User with ID ${userId} does not exist in room ${roomId}`
+        );
+      }
+
       const { transport, params } = await createWebRtcTransport(
         mediaSoupWorker
       );
-      getRoom(roomId).users.find((u) => u.userId === userId).producerTransport =
-        transport;
-      callback({ params });
+      user.producerTransport = transport;
+
+      if (typeof callback === "function") {
+        callback({ params });
+      }
     } catch (error) {
       console.error("create-producer-transport error:", error);
-      callback({ error: error.toString() });
+      if (typeof callback === "function") {
+        callback({ error: error.toString() });
+      }
     }
   });
 
@@ -154,36 +170,6 @@ io.on("connection", (socket) => {
         `Error in join-room event for user ${userId} in room ${roomId}: ${error}`
       );
       socket.emit("error", "Failed to join room");
-    }
-  });
-
-  socket.on("create-producer-transport", async (roomId, userId, callback) => {
-    try {
-      const room = getRoom(roomId);
-      if (!room) {
-        throw new Error(`Room with ID ${roomId} does not exist`);
-      }
-
-      const user = room.users.find((u) => u.userId === userId);
-      if (!user) {
-        throw new Error(
-          `User with ID ${userId} does not exist in room ${roomId}`
-        );
-      }
-
-      const { transport, params } = await createWebRtcTransport(
-        mediaSoupWorker
-      );
-      user.producerTransport = transport;
-
-      if (typeof callback === "function") {
-        callback({ params });
-      }
-    } catch (error) {
-      console.error("create-producer-transport error:", error);
-      if (typeof callback === "function") {
-        callback({ error: error.toString() });
-      }
     }
   });
 
@@ -277,38 +263,6 @@ io.on("connection", (socket) => {
     } catch (error) {
       logger.error("Error in leave-room event:", error);
       socket.emit("error", "Failed to leave room");
-    }
-  });
-
-  socket.on("offer", async (roomId, userId, offer) => {
-    logger.info(`User ${userId} sent an offer in room ${roomId}`);
-    try {
-      socket.to(roomId).emit("offer", socket.id, offer);
-    } catch (error) {
-      logger.error("Error in offer event:", error);
-      socket.emit("error", "Failed to handle offer");
-    }
-  });
-
-  socket.on("answer", async (roomId, userId, answer) => {
-    logger.info(`User ${userId} sent an answer in room ${roomId}`);
-    try {
-      logger.info("sending answer to", userId);
-      io.to(userId).emit("answer", socket.id, answer);
-      socket.emit("start-sharing");
-    } catch (error) {
-      logger.error("Error in answer event:", error);
-      socket.emit("error", "Failed to handle answer");
-    }
-  });
-
-  socket.on("ice-candidate", async (roomId, userId, candidate) => {
-    logger.info(`User ${userId} sent an ICE candidate in room ${roomId}`);
-    try {
-      io.to(userId).emit("ice-candidate", socket.id, candidate);
-    } catch (error) {
-      logger.error("Error in ice-candidate event:", error);
-      socket.emit("error", "Failed to handle ICE candidate");
     }
   });
 

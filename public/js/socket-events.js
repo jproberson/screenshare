@@ -1,12 +1,11 @@
-import {
-  createPeerConnection,
-  handleAnswer,
-  handleNewICECandidateMsg,
-  handleOffer,
-} from "./peer-connection.js";
 import { adjustUIForStreaming } from "./ui-controls.js";
-import { cleanUp } from "./peer-connection.js";
 import { loadRooms } from "./room-control.js";
+import {
+  createWebRtcTransport,
+  connectTransport,
+  consume,
+  produce,
+} from "./mediasoup-client.js";
 
 export function setupSocketListeners(stateHandler) {
   let {
@@ -16,9 +15,6 @@ export function setupSocketListeners(stateHandler) {
     updateIsSharing,
     getOtherUsers,
     updateOtherUsers,
-    getPeerConnections,
-    addPeerConnection,
-    removePeerConnection,
     getSharerId,
     getRemoteStream,
     updateSharerId,
@@ -99,10 +95,6 @@ export function setupSocketListeners(stateHandler) {
     try {
       console.log(`Socket connected to ${getSocket().id}`);
       console.log("Clearing any leftover connections");
-      Object.keys(getPeerConnections()).forEach((userId) => {
-        getPeerConnections()[userId].close();
-        removePeerConnection(userId);
-      });
 
       getSocket().emit("join-room", getRoomId(), getSocket().id);
 
@@ -119,95 +111,71 @@ export function setupSocketListeners(stateHandler) {
 
   getSocket().on("new-user", async (newUserId) => {
     console.log("new-user", newUserId);
-    if (!getOtherUsers().includes(newUserId)) {
-      updateOtherUsers([...getOtherUsers(), newUserId]);
-    }
-    const remoteStream = getRemoteStream();
-    if (remoteStream)
-      console.log("remote stream found for new user", newUserId);
-    if (getIsSharing() && remoteStream) {
+    updateOtherUsers([...getOtherUsers(), newUserId]);
+
+    if (getIsSharing()) {
       console.log("Sharing screen with newly joined user", newUserId);
       try {
-        let peerConnection = await createPeerConnection(
-          newUserId,
+        const { transport, params } = await createWebRtcTransport(
           getSocket(),
           getRoomId()
         );
-
-        remoteStream.getTracks().forEach((track) => {
-          peerConnection.addTrack(track, remoteStream);
-        });
-
-        addPeerConnection(newUserId, peerConnection);
-        console.log("Creating an offer for the new user", newUserId);
-        const offer = await peerConnection.createOffer();
-        await peerConnection.setLocalDescription(offer);
-        getSocket().emit(
-          "offer",
+        await connectTransport(
+          getSocket(),
           getRoomId(),
-          newUserId,
-          peerConnection.localDescription
+          transport.id,
+          params.dtlsParameters
         );
+        const producer = await produce(
+          getSocket(),
+          getRoomId(),
+          transport.id,
+          getRemoteStream()
+        );
+
+        // Handle the producer logic here
       } catch (error) {
-        console.error("Error creating an offer for the new user", error);
+        console.error("Error in sharing screen with new user", error);
       }
     }
   });
 
   getSocket().on("start-sharing", (sharerId) => {
-    console.log("start-sharing recieved");
+    console.log("start-sharing received");
     updateIsSharing(true);
     updateSharerId(sharerId);
-
-    console.log(
-      "adjustUIForStreaming",
-      "\nisSharing",
-      getIsSharing(),
-      "\nsocketId",
-      getSocket().id,
-      "\nsharerId",
-      getSharerId()
-    );
     adjustUIForStreaming(true, getSocket(), getSharerId());
   });
 
   getSocket().on("stop-sharing", () => {
     console.log("stop-sharing");
-    updateIsSharing(true);
+    updateIsSharing(false);
     adjustUIForStreaming(false, getSocket(), getSharerId());
   });
 
-  getSocket().on("offer", async (userId, offer) => {
-    console.log("offer sent from", userId);
-    await handleOffer(
-      userId,
-      offer,
-      getPeerConnections(),
+  // Add event listeners for mediasoup-specific events
+  getSocket().on("producer-transport-created", async (params) => {
+    // Handle producer transport creation logic
+  });
+
+  getSocket().on("consumer-transport-created", async (params) => {
+    // Handle consumer transport creation logic
+  });
+
+  getSocket().on("consume", async (producerId) => {
+    // Handle consuming a remote producer
+    const device = getDevice();
+    if (!device.canProduce("video")) {
+      console.error("Cannot consume video");
+      return;
+    }
+    const { id, kind, rtpParameters } = await consume(
       getSocket(),
-      getRoomId()
+      getRoomId(),
+      producerId,
+      device.rtpCapabilities
     );
-  });
-
-  getSocket().on("answer", async (userId, answer) => {
-    console.log("answer sent from", userId);
-    const peerConnection = await handleAnswer(
-      userId,
-      getPeerConnections(),
-      answer
-    );
-
-    addPeerConnection(userId, peerConnection);
-  });
-
-  getSocket().on("ice-candidate", async (userId, candidate) => {
-    console.log("ice-candidate sent to", userId);
-    const peerConnection = await handleNewICECandidateMsg(
-      userId,
-      getPeerConnections(),
-      candidate
-    );
-
-    addPeerConnection(userId, peerConnection);
+    // Handle the consumer logic here
   });
 
   getSocket().on("other-users", (otherUsers) => {
@@ -217,16 +185,7 @@ export function setupSocketListeners(stateHandler) {
 
   getSocket().on("user-left", (userId) => {
     try {
-      const currentPeerConnections = getPeerConnections();
-      console.log("user left", userId);
-      console.log("currentPeerConnections", currentPeerConnections);
-      const peerConnection = currentPeerConnections[userId];
-      if (peerConnection) {
-        peerConnection.close();
-      }
-
-      removePeerConnection(userId);
-      console.log("peerConnections after user left", getPeerConnections());
+      console.log("user left", userId);      
       const updatedOtherUsers = getOtherUsers().filter((id) => id !== userId);
       updateOtherUsers(updatedOtherUsers);
       console.log("otherUsers after user left", getOtherUsers());
@@ -239,7 +198,7 @@ export function setupSocketListeners(stateHandler) {
     console.log("onbeforeunload");
     try {
       const socket = getSocket();
-      cleanUp(getPeerConnections(), socket, getRoomId());
+      // cleanUp(getPeerConnections(), socket, getRoomId());
     } catch (error) {
       console.error("Error during window unload", error);
     }
