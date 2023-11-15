@@ -159,6 +159,7 @@ io.on("connection", (socket) => {
       const otherUsers = room.users
         .filter((u) => u.userId !== userId)
         .map((u) => u.userId);
+
       socket.emit("other-users", otherUsers);
       logger.info(
         `Notified ${userId} of other users: ${otherUsers} in room ${roomId}`
@@ -269,20 +270,22 @@ io.on("connection", (socket) => {
   socket.on("disconnect", async () => {
     logger.info(`Socket ${socket.id} disconnected`);
     try {
-      Object.keys(rooms).forEach((roomId, index) => {
+      Object.keys(rooms).forEach((roomId) => {
         const room = rooms[roomId];
-
-        if (room.users.includes(socket.id)) {
-          if (room.isBeingShared && socket.id === room.sharerId) {
+  
+        const userIndex = room.users.findIndex(user => user.userId === socket.id);
+  
+        if (userIndex !== -1) {
+          if (room.isBeingShared && room.sharerId === socket.id) {
             room.isBeingShared = false;
             room.sharerId = null;
             socket.broadcast.to(room.id).emit("stop-sharing");
           }
 
-          room.users = room.users.filter((id) => id !== socket.id);
-
+          room.users.splice(userIndex, 1);
+  
           if (room.users.length === 0) {
-            delete rooms[room.id];
+            delete rooms[roomId];
           } else {
             socket.broadcast.to(room.id).emit("user-left", socket.id);
           }
