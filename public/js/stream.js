@@ -8,6 +8,7 @@ export async function startSharing(stateHandler) {
     updateIsSharing,
     updateSharerId,
     getRoomId,
+    getDevice,
   } = stateHandler;
 
   const socket = getSocket();
@@ -27,7 +28,13 @@ export async function startSharing(stateHandler) {
     updateSharerId(socket.id);
     updateButtonUI(true);
 
-    await startProducingMedia(getRoomId(), socket.id, remoteStream, getSocket);
+    await startProducingMedia(
+      getRoomId(),
+      socket.id,
+      remoteStream,
+      getSocket,
+      getDevice
+    );
 
     adjustUIForStreaming(true, socket, socket.id);
     socket.emit("start-sharing", getRoomId(), socket.id);

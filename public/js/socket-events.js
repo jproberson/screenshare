@@ -1,5 +1,6 @@
 import { adjustUIForStreaming } from "./ui-controls.js";
 import { loadRooms } from "./room-control.js";
+import { initializeDevice } from "./mediasoup-connection.js";
 
 export function setupSocketListeners(stateHandler) {
   let {
@@ -12,6 +13,7 @@ export function setupSocketListeners(stateHandler) {
     getSharerId,
     getRemoteStream,
     updateSharerId,
+    updateDevice
   } = stateHandler;
 
   getSocket().on("error", (error) => {
@@ -21,9 +23,9 @@ export function setupSocketListeners(stateHandler) {
   getSocket().on("connect", async () => {
     try {
       console.log(`Socket connected to ${getSocket().id}`);
-      console.log("Clearing any leftover connections");
-
       getSocket().emit("join-room", getRoomId(), getSocket().id);
+
+      await initializeDevice(getSocket(), updateDevice);
 
       await loadRooms();
     } catch (error) {
@@ -39,6 +41,7 @@ export function setupSocketListeners(stateHandler) {
   getSocket().on("new-user", async (newUserId) => {
     console.log("new-user", newUserId);
     updateOtherUsers([...getOtherUsers(), newUserId]);
+    await loadRooms();
 
     if (getIsSharing()) {
       console.log("Sharing screen with newly joined user", newUserId);
@@ -89,11 +92,12 @@ export function setupSocketListeners(stateHandler) {
     updateOtherUsers(otherUsers);
   });
 
-  getSocket().on("user-left", (userId) => {
+  getSocket().on("user-left", async (userId) => {
     try {
       console.log("user left", userId);
       const updatedOtherUsers = getOtherUsers().filter((id) => id !== userId);
       updateOtherUsers(updatedOtherUsers);
+      await loadRooms();
       console.log("otherUsers after user left", getOtherUsers());
     } catch (error) {
       console.error("Error during user-left event", error);
@@ -110,3 +114,4 @@ export function setupSocketListeners(stateHandler) {
     }
   };
 }
+

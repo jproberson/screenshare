@@ -9,14 +9,28 @@ const {
   connectTransport,
   createProducer,
   createConsumer,
+  getRouter,
 } = require("./sfu-mediasoup.js");
+const cors = require('cors');
+
 
 const app = express();
+
+const corsOptions = {
+  origin: 'http://localhost:8080',
+  methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
+  credentials: true,
+  allowedHeaders: 'Content-Type, Authorization, X-Requested-With',
+};
+
+app.use(cors(corsOptions));
+
 const server = http.createServer(app);
 const io = new Server(server, {
   cors: {
-    origin: "http://localhost:4000",
+    origin: "http://localhost:8080",
     methods: ["GET", "POST"],
+    credentials: true
   },
 });
 
@@ -75,17 +89,15 @@ io.on("connection", (socket) => {
     }
   });
 
-
   socket.on(
     "connect-producer-transport",
     async (roomId, userId, dtlsParameters, callback) => {
       logger.info("Received DTLS Parameters:", dtlsParameters);
-      const userTransportId = getRoom(roomId).users.find((u) => u.userId === userId).producerTransport.id;
+      const userTransportId = getRoom(roomId).users.find(
+        (u) => u.userId === userId
+      ).producerTransport.id;
       try {
-        await connectTransport(
-          userTransportId,
-          dtlsParameters
-        );
+        await connectTransport(userTransportId, dtlsParameters);
         callback({});
       } catch (error) {
         logger.error("connect-producer-transport error:", error);
@@ -100,7 +112,7 @@ io.on("connection", (socket) => {
       try {
         const producer = await createProducer(
           getRoom(roomId).users.find((u) => u.userId === userId)
-            .producerTransport,
+            .producerTransport.id,
           kind,
           rtpParameters
         );
@@ -171,7 +183,7 @@ io.on("connection", (socket) => {
       try {
         await connectTransport(
           getRoom(roomId).users.find((u) => u.userId === userId)
-            .consumerTransport,
+            .consumerTransport.id,
           dtlsParameters
         );
         callback({});
@@ -204,6 +216,20 @@ io.on("connection", (socket) => {
       }
     }
   );
+
+  socket.on("getRouterRtpCapabilities", (callback) => {
+    try {
+      const router = getRouter();
+      if (!router) {
+        throw new Error("Router is not initialized");
+      }
+      const rtpCapabilities = router.rtpCapabilities;
+      callback({ rtpCapabilities });
+    } catch (error) {
+      logger.error("Error in getRouterRtpCapabilities:", error);
+      callback({ error: error.toString() });
+    }
+  });
 
   socket.on("start-sharing", async (roomId, userId) => {
     logger.info(`User ${userId} started sharing in room ${roomId}`);

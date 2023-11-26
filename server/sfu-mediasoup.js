@@ -34,7 +34,7 @@ async function createWorker() {
       parameters: {
         "x-google-start-bitrate": 1000,
       },
-    },
+    }
   ];
 
   router = await worker.createRouter({ mediaCodecs });
@@ -60,14 +60,13 @@ async function createWebRtcTransport() {
 }
 
 async function connectTransport(transportId, dtlsParameters) {
-  logger.info("transports found:", transports.size)
   logger.info(`Connecting transport: ${transportId}`);
 
   const transport = transports.get(transportId);
 
   logger.info('transport found:', transport)
   if (!transport) {
-    logger.error(`Transport not found: ${transportId}`);
+    logger.error(`Transport not found: ${transportId} when connecting`);
     throw new Error("Transport not found");
   }
 
@@ -77,7 +76,7 @@ async function connectTransport(transportId, dtlsParameters) {
 async function createProducer(transportId, kind, rtpParameters) {
   const transport = transports.get(transportId);
   if (!transport) {
-    throw new Error("Transport not found");
+    throw new Error(`Transport not found: ${transportId} when creating producer`);
   }
   const producer = await transport.produce({ kind, rtpParameters });
   return producer.id;
@@ -91,7 +90,7 @@ async function createConsumer(producerId, rtpCapabilities, transportId) {
 
   const transport = transports.get(transportId); // Retrieve the transport
   if (!transport) {
-    throw new Error("Transport not found");
+    throw new Error(`Transport not found: ${transportId} when creating consumer`);
   }
 
   const consumer = await transport.consume({
@@ -114,4 +113,5 @@ module.exports = {
   connectTransport,
   createProducer,
   createConsumer,
+  getRouter: () => router,
 };

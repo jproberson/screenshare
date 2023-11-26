@@ -14,6 +14,7 @@ document.addEventListener("DOMContentLoaded", async (event) => {
   let otherUserIds = [];
   let isSharing = false;
   let sharerId = null;
+  let device = null;
   const room_id = getRoomIdFromURL();
 
   const stateHandler = {
@@ -34,6 +35,10 @@ document.addEventListener("DOMContentLoaded", async (event) => {
     getSharerId: () => sharerId,
     updateSharerId: (id) => {
       sharerId = id;
+    },
+    getDevice: () => device,
+    updateDevice: (d) => {
+      device = d;
     },
   };
 
