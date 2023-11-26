@@ -1,9 +1,8 @@
 const express = require("express");
 const http = require("http");
 const { Server } = require("socket.io");
-const winston = require("winston");
 const fs = require("fs");
-const path = require("path");
+const logger = require("./logger");
 const {
   createWorker,
   createWebRtcTransport,
@@ -25,16 +24,6 @@ const logDir = "logs";
 if (!fs.existsSync(logDir)) {
   fs.mkdirSync(logDir);
 }
-
-const logger = winston.createLogger({
-  level: "info",
-  format: winston.format.combine(winston.format.simple()),
-  transports: [
-    new winston.transports.File({
-      filename: path.join(logDir, "/server-logs.log"),
-    }),
-  ],
-});
 
 app.use(express.static("./public"));
 
@@ -70,34 +59,36 @@ io.on("connection", (socket) => {
         );
       }
 
-      const { transport, params } = await createWebRtcTransport(
-        mediaSoupWorker
-      );
-      user.producerTransport = transport;
+      const transportParams = await createWebRtcTransport(mediaSoupWorker);
+      user.producerTransport = transportParams;
+
+      logger.info("transportParams:", transportParams);
 
       if (typeof callback === "function") {
-        callback({ params });
+        callback({ params: transportParams });
       }
     } catch (error) {
-      console.error("create-producer-transport error:", error);
+      logger.error("create-producer-transport error:", error);
       if (typeof callback === "function") {
         callback({ error: error.toString() });
       }
     }
   });
 
+
   socket.on(
     "connect-producer-transport",
     async (roomId, userId, dtlsParameters, callback) => {
+      logger.info("Received DTLS Parameters:", dtlsParameters);
+      const userTransportId = getRoom(roomId).users.find((u) => u.userId === userId).producerTransport.id;
       try {
         await connectTransport(
-          getRoom(roomId).users.find((u) => u.userId === userId)
-            .producerTransport,
+          userTransportId,
           dtlsParameters
         );
         callback({});
       } catch (error) {
-        console.error("connect-producer-transport error:", error);
+        logger.error("connect-producer-transport error:", error);
         callback({ error: error.toString() });
       }
     }
@@ -118,7 +109,7 @@ io.on("connection", (socket) => {
           .producers.push(producer);
         callback({ id: producer.id });
       } catch (error) {
-        console.error("produce error:", error);
+        logger.error("produce error:", error);
         callback({ error: error.toString() });
       }
     }
@@ -185,7 +176,7 @@ io.on("connection", (socket) => {
         );
         callback({});
       } catch (error) {
-        console.error("connect-consumer-transport error:", error);
+        logger.error("connect-consumer-transport error:", error);
         callback({ error: error.toString() });
       }
     }
@@ -208,7 +199,7 @@ io.on("connection", (socket) => {
 
         callback({ id, kind, rtpParameters });
       } catch (error) {
-        console.error("consume error:", error);
+        logger.error("consume error:", error);
         callback({ error: error.toString() });
       }
     }
@@ -272,9 +263,11 @@ io.on("connection", (socket) => {
     try {
       Object.keys(rooms).forEach((roomId) => {
         const room = rooms[roomId];
-  
-        const userIndex = room.users.findIndex(user => user.userId === socket.id);
-  
+
+        const userIndex = room.users.findIndex(
+          (user) => user.userId === socket.id
+        );
+
         if (userIndex !== -1) {
           if (room.isBeingShared && room.sharerId === socket.id) {
             room.isBeingShared = false;
@@ -283,7 +276,7 @@ io.on("connection", (socket) => {
           }
 
           room.users.splice(userIndex, 1);
-  
+
           if (room.users.length === 0) {
             delete rooms[roomId];
           } else {

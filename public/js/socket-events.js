@@ -1,11 +1,5 @@
 import { adjustUIForStreaming } from "./ui-controls.js";
 import { loadRooms } from "./room-control.js";
-import {
-  createWebRtcTransport,
-  connectTransport,
-  consume,
-  produce,
-} from "./mediasoup-client.js";
 
 export function setupSocketListeners(stateHandler) {
   let {
@@ -22,73 +16,6 @@ export function setupSocketListeners(stateHandler) {
 
   getSocket().on("error", (error) => {
     console.error("Socket error", error);
-  });
-
-  getSocket().on("create-consumer-transport", async (callback) => {
-    try {
-      socket.emit(
-        "create-consumer-transport",
-        getRoomId(),
-        (err, transportParams) => {
-          if (err) {
-            console.error("Error creating consumer transport:", err);
-            callback(err);
-          } else {
-            callback(null, transportParams);
-          }
-        }
-      );
-    } catch (error) {
-      console.error("Error in create-consumer-transport:", error);
-      callback(error);
-    }
-  });
-
-  getSocket().on(
-    "connect-consumer-transport",
-    async (dtlsParameters, callback) => {
-      try {
-        socket.emit(
-          "connect-consumer-transport",
-          getRoomId(),
-          dtlsParameters,
-          (err) => {
-            if (err) {
-              console.error("Error connecting consumer transport:", err);
-              callback(err);
-            } else {
-              callback(null);
-            }
-          }
-        );
-      } catch (error) {
-        console.error("Error in connect-consumer-transport:", error);
-        callback(error);
-      }
-    }
-  );
-
-  getSocket().on("consume", async (producerId, rtpCapabilities, callback) => {
-    try {
-      socket.emit(
-        "consume",
-        getRoomId(),
-        getUserId(),
-        producerId,
-        rtpCapabilities,
-        (response) => {
-          if (response.error) {
-            console.error("Error consuming producer:", response.error);
-            callback(new Error(response.error));
-          } else {
-            callback(null, response);
-          }
-        }
-      );
-    } catch (error) {
-      console.error("Error in consume event:", error);
-      callback(error);
-    }
   });
 
   getSocket().on("connect", async () => {
@@ -144,6 +71,10 @@ export function setupSocketListeners(stateHandler) {
     console.log("start-sharing received");
     updateIsSharing(true);
     updateSharerId(sharerId);
+
+    console.log('[start-sharing] getSocket:', getSocket());
+    console.log('[start-sharing] sharerId:', sharerId);
+
     adjustUIForStreaming(true, getSocket(), getSharerId());
   });
 
@@ -153,31 +84,6 @@ export function setupSocketListeners(stateHandler) {
     adjustUIForStreaming(false, getSocket(), getSharerId());
   });
 
-  // Add event listeners for mediasoup-specific events
-  getSocket().on("producer-transport-created", async (params) => {
-    // Handle producer transport creation logic
-  });
-
-  getSocket().on("consumer-transport-created", async (params) => {
-    // Handle consumer transport creation logic
-  });
-
-  getSocket().on("consume", async (producerId) => {
-    // Handle consuming a remote producer
-    const device = getDevice();
-    if (!device.canProduce("video")) {
-      console.error("Cannot consume video");
-      return;
-    }
-    const { id, kind, rtpParameters } = await consume(
-      getSocket(),
-      getRoomId(),
-      producerId,
-      device.rtpCapabilities
-    );
-    // Handle the consumer logic here
-  });
-
   getSocket().on("other-users", (otherUsers) => {
     console.log("other-users", otherUsers);
     updateOtherUsers(otherUsers);
@@ -185,7 +91,7 @@ export function setupSocketListeners(stateHandler) {
 
   getSocket().on("user-left", (userId) => {
     try {
-      console.log("user left", userId);      
+      console.log("user left", userId);
       const updatedOtherUsers = getOtherUsers().filter((id) => id !== userId);
       updateOtherUsers(updatedOtherUsers);
       console.log("otherUsers after user left", getOtherUsers());
@@ -198,7 +104,7 @@ export function setupSocketListeners(stateHandler) {
     console.log("onbeforeunload");
     try {
       const socket = getSocket();
-      // cleanUp(getPeerConnections(), socket, getRoomId());
+      // socket cleanup?
     } catch (error) {
       console.error("Error during window unload", error);
     }

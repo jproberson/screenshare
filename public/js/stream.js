@@ -1,4 +1,5 @@
 import { updateButtonUI, adjustUIForStreaming } from "./ui-controls.js";
+import { startProducingMedia } from "./mediasoup-connection.js";
 
 export async function startSharing(stateHandler) {
   const {
@@ -26,13 +27,7 @@ export async function startSharing(stateHandler) {
     updateSharerId(socket.id);
     updateButtonUI(true);
 
-    const transportInfo = await createProducerTransport(socket, getRoomId());
-    const producerId = await startProducing(
-      socket,
-      getRoomId(),
-      transportInfo.id,
-      remoteStream
-    );
+    await startProducingMedia(getRoomId(), socket.id, remoteStream, getSocket);
 
     adjustUIForStreaming(true, socket, socket.id);
     socket.emit("start-sharing", getRoomId(), socket.id);
@@ -69,41 +64,6 @@ export async function stopSharing(stateHandler) {
 
   stopProducing(socket, getRoomId());
   socket.emit("stop-sharing", getRoomId(), socket.id);
-}
-
-async function createProducerTransport(socket, roomId, userId) {
-  return new Promise((resolve, reject) => {
-    socket.emit(
-      "create-producer-transport",
-      roomId,
-      userId,
-      (err, transportInfo) => {
-        if (err) {
-          reject(err);
-        } else {
-          resolve(transportInfo);
-        }
-      }
-    );
-  });
-}
-
-async function startProducing(socket, roomId, transportId, stream) {
-  return new Promise((resolve, reject) => {
-    socket.emit(
-      "start-producing",
-      roomId,
-      transportId,
-      stream,
-      (err, producerId) => {
-        if (err) {
-          reject(err);
-        } else {
-          resolve(producerId);
-        }
-      }
-    );
-  });
 }
 
 async function stopProducing(socket, roomId) {

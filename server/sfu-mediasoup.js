@@ -1,7 +1,9 @@
 const mediasoup = require("mediasoup");
+const logger = require("./logger");
 
 let worker;
 let router;
+let transports = new Map();
 
 async function createWorker() {
   worker = await mediasoup.createWorker({
@@ -11,7 +13,7 @@ async function createWorker() {
   });
 
   worker.on("died", () => {
-    console.error(
+    logger.error(
       "mediasoup worker died, exiting in 2 seconds... [pid:%d]",
       worker.pid
     );
@@ -46,6 +48,9 @@ async function createWebRtcTransport() {
     preferUdp: true,
   });
 
+  logger.info(`Transport created: ${transport.id}`);
+  transports.set(transport.id, transport);
+
   return {
     id: transport.id,
     iceParameters: transport.iceParameters,
@@ -55,23 +60,40 @@ async function createWebRtcTransport() {
 }
 
 async function connectTransport(transportId, dtlsParameters) {
-  const transport = router.getTransport(transportId);
+  logger.info("transports found:", transports.size)
+  logger.info(`Connecting transport: ${transportId}`);
+
+  const transport = transports.get(transportId);
+
+  logger.info('transport found:', transport)
+  if (!transport) {
+    logger.error(`Transport not found: ${transportId}`);
+    throw new Error("Transport not found");
+  }
+
   await transport.connect({ dtlsParameters });
 }
 
 async function createProducer(transportId, kind, rtpParameters) {
-  const transport = router.getTransport(transportId);
+  const transport = transports.get(transportId);
+  if (!transport) {
+    throw new Error("Transport not found");
+  }
   const producer = await transport.produce({ kind, rtpParameters });
   return producer.id;
 }
 
 async function createConsumer(producerId, rtpCapabilities, transportId) {
   if (!router.canConsume({ producerId, rtpCapabilities })) {
-    console.error("Cannot consume");
+    logger.error("Cannot consume");
     return;
   }
 
-  const transport = router.getTransport(transportId);
+  const transport = transports.get(transportId); // Retrieve the transport
+  if (!transport) {
+    throw new Error("Transport not found");
+  }
+
   const consumer = await transport.consume({
     producerId,
     rtpCapabilities,
