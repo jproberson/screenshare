@@ -3,24 +3,16 @@ const http = require("http");
 const { Server } = require("socket.io");
 const fs = require("fs");
 const logger = require("./logger");
-const {
-  createWorker,
-  createWebRtcTransport,
-  connectTransport,
-  createProducer,
-  createConsumer,
-  getRouter,
-} = require("./sfu-mediasoup.js");
-const cors = require('cors');
 
+const cors = require("cors");
 
 const app = express();
 
 const corsOptions = {
-  origin: 'http://localhost:8080',
-  methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
+  origin: "http://localhost:8080",
+  methods: "GET,HEAD,PUT,PATCH,POST,DELETE",
   credentials: true,
-  allowedHeaders: 'Content-Type, Authorization, X-Requested-With',
+  allowedHeaders: "Content-Type, Authorization, X-Requested-With",
 };
 
 app.use(cors(corsOptions));
@@ -30,7 +22,7 @@ const io = new Server(server, {
   cors: {
     origin: "http://localhost:8080",
     methods: ["GET", "POST"],
-    credentials: true
+    credentials: true,
   },
 });
 
@@ -42,10 +34,6 @@ if (!fs.existsSync(logDir)) {
 app.use(express.static("./public"));
 
 let mediaSoupWorker;
-
-createWorker().then((worker) => {
-  mediaSoupWorker = worker;
-});
 
 function getRoom(roomId) {
   return rooms[roomId];
@@ -59,74 +47,6 @@ app.get("/rooms", (req, res) => {
 });
 
 io.on("connection", (socket) => {
-  socket.on("create-producer-transport", async (roomId, userId, callback) => {
-    try {
-      const room = getRoom(roomId);
-      if (!room) {
-        throw new Error(`Room with ID ${roomId} does not exist`);
-      }
-
-      const user = room.users.find((u) => u.userId === userId);
-      if (!user) {
-        throw new Error(
-          `User with ID ${userId} does not exist in room ${roomId}`
-        );
-      }
-
-      const transportParams = await createWebRtcTransport(mediaSoupWorker);
-      user.producerTransport = transportParams;
-
-      logger.info("transportParams:", transportParams);
-
-      if (typeof callback === "function") {
-        callback({ params: transportParams });
-      }
-    } catch (error) {
-      logger.error("create-producer-transport error:", error);
-      if (typeof callback === "function") {
-        callback({ error: error.toString() });
-      }
-    }
-  });
-
-  socket.on(
-    "connect-producer-transport",
-    async (roomId, userId, dtlsParameters, callback) => {
-      logger.info("Received DTLS Parameters:", dtlsParameters);
-      const userTransportId = getRoom(roomId).users.find(
-        (u) => u.userId === userId
-      ).producerTransport.id;
-      try {
-        await connectTransport(userTransportId, dtlsParameters);
-        callback({});
-      } catch (error) {
-        logger.error("connect-producer-transport error:", error);
-        callback({ error: error.toString() });
-      }
-    }
-  );
-
-  socket.on(
-    "produce",
-    async (roomId, userId, kind, rtpParameters, callback) => {
-      try {
-        const producer = await createProducer(
-          getRoom(roomId).users.find((u) => u.userId === userId)
-            .producerTransport.id,
-          kind,
-          rtpParameters
-        );
-        getRoom(roomId)
-          .users.find((u) => u.userId === userId)
-          .producers.push(producer);
-        callback({ id: producer.id });
-      } catch (error) {
-        logger.error("produce error:", error);
-        callback({ error: error.toString() });
-      }
-    }
-  );
-
   socket.on("join-room", async (roomId, userId) => {
     try {
       logger.info(`User ${userId} attempting to join room ${roomId}`);
@@ -177,59 +97,6 @@ io.on("connection", (socket) => {
     }
   });
 
-  socket.on(
-    "connect-consumer-transport",
-    async (roomId, userId, dtlsParameters, callback) => {
-      try {
-        await connectTransport(
-          getRoom(roomId).users.find((u) => u.userId === userId)
-            .consumerTransport.id,
-          dtlsParameters
-        );
-        callback({});
-      } catch (error) {
-        logger.error("connect-consumer-transport error:", error);
-        callback({ error: error.toString() });
-      }
-    }
-  );
-
-  socket.on(
-    "consume",
-    async (roomId, userId, producerId, rtpCapabilities, callback) => {
-      try {
-        const { id, kind, rtpParameters } = await createConsumer(
-          producerId,
-          rtpCapabilities,
-          getRoom(roomId).users.find((u) => u.userId === userId)
-            .consumerTransport.id
-        );
-
-        getRoom(roomId)
-          .users.find((u) => u.userId === userId)
-          .consumers.push({ id, producerId });
-
-        callback({ id, kind, rtpParameters });
-      } catch (error) {
-        logger.error("consume error:", error);
-        callback({ error: error.toString() });
-      }
-    }
-  );
-
-  socket.on("getRouterRtpCapabilities", (callback) => {
-    try {
-      const router = getRouter();
-      if (!router) {
-        throw new Error("Router is not initialized");
-      }
-      const rtpCapabilities = router.rtpCapabilities;
-      callback({ rtpCapabilities });
-    } catch (error) {
-      logger.error("Error in getRouterRtpCapabilities:", error);
-      callback({ error: error.toString() });
-    }
-  });
 
   socket.on("start-sharing", async (roomId, userId) => {
     logger.info(`User ${userId} started sharing in room ${roomId}`);
@@ -322,7 +189,8 @@ app.get("/socket.io/socket.io.js", (req, res) => {
 
 const PORT = 4000;
 server.listen(PORT, () => {
-  logger.info(`*************************************************************`);
+  logger.info('');
+  logger.info(`**************************************************************************************************************************`);
   logger.info(`Server listening on port ${PORT}`);
 });
 

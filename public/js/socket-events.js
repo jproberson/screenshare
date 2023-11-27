@@ -1,6 +1,5 @@
 import { adjustUIForStreaming } from "./ui-controls.js";
 import { loadRooms } from "./room-control.js";
-import { initializeDevice } from "./mediasoup-connection.js";
 
 export function setupSocketListeners(stateHandler) {
   let {
@@ -25,8 +24,6 @@ export function setupSocketListeners(stateHandler) {
       console.log(`Socket connected to ${getSocket().id}`);
       getSocket().emit("join-room", getRoomId(), getSocket().id);
 
-      await initializeDevice(getSocket(), updateDevice);
-
       await loadRooms();
     } catch (error) {
       console.error("Error during socket connect event", error);
@@ -46,24 +43,7 @@ export function setupSocketListeners(stateHandler) {
     if (getIsSharing()) {
       console.log("Sharing screen with newly joined user", newUserId);
       try {
-        const { transport, params } = await createWebRtcTransport(
-          getSocket(),
-          getRoomId()
-        );
-        await connectTransport(
-          getSocket(),
-          getRoomId(),
-          transport.id,
-          params.dtlsParameters
-        );
-        const producer = await produce(
-          getSocket(),
-          getRoomId(),
-          transport.id,
-          getRemoteStream()
-        );
-
-        // Handle the producer logic here
+        // Logic to share with the new user
       } catch (error) {
         console.error("Error in sharing screen with new user", error);
       }

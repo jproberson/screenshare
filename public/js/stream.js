@@ -1,5 +1,4 @@
 import { updateButtonUI, adjustUIForStreaming } from "./ui-controls.js";
-import { startProducingMedia } from "./mediasoup-connection.js";
 
 export async function startSharing(stateHandler) {
   const {
@@ -22,19 +21,14 @@ export async function startSharing(stateHandler) {
       },
       audio: true,
     });
+    remoteStream.getTracks().forEach(track => {
+      console.log(`Track kind: ${track.kind}, label: ${track.label}`);
+    });
 
     updateRemoteStream(remoteStream);
     updateIsSharing(true);
     updateSharerId(socket.id);
     updateButtonUI(true);
-
-    await startProducingMedia(
-      getRoomId(),
-      socket.id,
-      remoteStream,
-      getSocket,
-      getDevice
-    );
 
     adjustUIForStreaming(true, socket, socket.id);
     socket.emit("start-sharing", getRoomId(), socket.id);
@@ -69,7 +63,7 @@ export async function stopSharing(stateHandler) {
   adjustUIForStreaming(false, socket, null);
   updateButtonUI(false);
 
-  stopProducing(socket, getRoomId());
+  await stopProducing(socket, getRoomId());
   socket.emit("stop-sharing", getRoomId(), socket.id);
 }
 

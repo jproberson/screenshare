@@ -1,7 +1,7 @@
 export function getRoomIdFromURL() {
     const params = new URLSearchParams(window.location.search);
     const roomId = params.get('room');
-    return roomId || "room-1";
+    return roomId || "maitri";
 }
 
 
